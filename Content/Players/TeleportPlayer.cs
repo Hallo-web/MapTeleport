@@ -10,42 +10,41 @@ namespace MapTeleport.Content.Players
 {
     public class TeleportPlayer : ModPlayer
     {
-        public bool teleportMode; // true when holding the book
+        public bool teleportMode;
+        private bool _wasFullscreen = false;
 
         public override void ProcessTriggers(TriggersSet triggersSet)
         {
-            // Enable teleport mode if holding the book
             teleportMode = Player.HeldItem.ModItem is Items.BasicBook;
         }
-
         public override void PostUpdate()
         {
-            if (!teleportMode || !Main.mapFullscreen)
-                return;
+            if (Player.whoAmI != Main.myPlayer) return;
+            if (!teleportMode || !Main.mapFullscreen) return;
 
-            // Right-click map to teleport
             if (Main.mouseRight && Main.mouseRightRelease)
             {
-                Vector2 mouse = Main.MouseScreen;
+                Vector2 mouse = new Vector2(Main.mouseX, Main.mouseY);
                 float scale = Main.mapFullscreenScale;
+                Vector2 screenCenter = new Vector2(Main.screenWidth, Main.screenHeight) / 2f;
 
-                // Convert screen coords → world coords
-                Vector2 world = (mouse - new Vector2(Main.screenWidth, Main.screenHeight) / 2f) 
-                                / scale 
-                                + Main.mapFullscreenPos;
+                // mapFullscreenPos is already in tile units, no conversion needed
+                Vector2 tilePos = Main.mapFullscreenPos + (mouse - screenCenter) / scale;
 
-                world *= 16f; // tile → pixel
-
-                int tileX = (int)(world.X / 16f);
-                int tileY = (int)(world.Y / 16f);
+                int tileX = (int)tilePos.X;
+                int tileY = (int)tilePos.Y;
 
                 TryTeleport(tileX, tileY);
             }
         }
 
-        // Public so server packet handler can access it
-        public bool HasRoom(int x, int y)
+       public bool HasRoom(int x, int y)
         {
+            // Bounds check
+            if (x < 1 || x + 1 >= Main.maxTilesX || y < 3 || y >= Main.maxTilesY)
+                return false;
+
+            // Just check the 2x3 area at cursor is free of solid tiles
             for (int i = 0; i < 2; i++)
             {
                 for (int j = 0; j < 3; j++)
@@ -58,35 +57,45 @@ namespace MapTeleport.Content.Players
             return true;
         }
 
-        private void TryTeleport(int x, int y)
+        private void TryTeleport(int tileX, int tileY)
         {
-            if (!HasRoom(x, y)) return;
+            if (!HasRoom(tileX, tileY)) return;
 
             if (Main.netMode == NetmodeID.SinglePlayer)
             {
-                DoTeleport(x, y);
+                DoTeleport(tileX, tileY);
             }
             else if (Main.netMode == NetmodeID.MultiplayerClient)
             {
-                // Send teleport request to server
                 ModPacket packet = Mod.GetPacket();
-                packet.Write((byte)0); // packet ID = teleport
-                packet.Write(x);
-                packet.Write(y);
+                packet.Write((byte)0);
+                packet.Write(tileX);
+                packet.Write(tileY);
                 packet.Send();
             }
         }
-
-        // Executed server-side (or singleplayer)
-        public void DoTeleport(int x, int y)
+        // Called both server-side AND client-side (via response packet)
+       public void DoTeleport(int tileX, int tileY)
         {
-            Vector2 position = new Vector2(x * 16f, y * 16f - Player.height);
+            // tileY is the floor tile, player stands on top of it
+            // Player feet go at the TOP of the floor tile = tileY * 16f
+            // Player origin is top-left, height is 56px, so subtract height to place feet correctly
+            Vector2 position = new Vector2(tileX * 16f, tileY * 16f - Player.height);
 
-            Player.Teleport(position, 0); // server handles sync
+            Player.Teleport(position, 1);
             Player.velocity = Vector2.Zero;
 
-            // Optional teleport sound
-            SoundEngine.PlaySound(SoundID.Item6, Player.position);
+            if (Main.netMode != NetmodeID.Server)
+            {
+                SoundEngine.PlaySound(SoundID.Item6, Player.position);
+                Main.mapFullscreen = false;
+            }
+
+            if (Main.netMode == NetmodeID.Server)
+            {
+                NetMessage.SendData(MessageID.TeleportEntity, -1, -1,
+                    null, 0, Player.whoAmI, position.X, position.Y);
+            }
         }
     }
 }

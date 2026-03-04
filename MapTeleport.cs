@@ -11,20 +11,38 @@ namespace MapTeleport
         {
             byte packetID = reader.ReadByte();
 
-            if (packetID == 0) // teleport request
+           if (packetID == 0)
             {
                 int x = reader.ReadInt32();
-                int y = reader.ReadInt32();
+                int y = reader.ReadInt32(); // already resolved floor Y from client
 
                 if (Main.netMode == NetmodeID.Server)
                 {
                     Player player = Main.player[whoAmI];
                     var modPlayer = player.GetModPlayer<Content.Players.TeleportPlayer>();
 
-                    if (modPlayer != null && modPlayer.HasRoom(x, y))
+                    // y is already the floor, just validate it's still safe on server side
+                    if (modPlayer != null && modPlayer.HasRoom(x, y - 1))
                     {
-                        modPlayer.DoTeleport(x, y); // server executes teleport
+                        modPlayer.DoTeleport(x, y);
+
+                        ModPacket response = GetPacket();
+                        response.Write((byte)1);
+                        response.Write(x);
+                        response.Write(y);
+                        response.Send(whoAmI);
                     }
+                }
+            }
+            else if (packetID == 1) // server → client: teleport confirm
+            {
+                int x = reader.ReadInt32();
+                int y = reader.ReadInt32();
+
+                if (Main.netMode == NetmodeID.MultiplayerClient)
+                {
+                    var modPlayer = Main.LocalPlayer.GetModPlayer<Content.Players.TeleportPlayer>();
+                    modPlayer.DoTeleport(x, y);
                 }
             }
         }
