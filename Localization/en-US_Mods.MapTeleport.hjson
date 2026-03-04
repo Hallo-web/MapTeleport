@@ -2,12 +2,11 @@
 
 Items: {
 	BasicBook: {
-		DisplayName: "Basic Book"
+		DisplayName: Basic Book
 		Tooltip:
 			'''
-			Template of an item
-			Replacing this tooltip is duty 
-			It's snowing on Mt.Fuji
+			Enables teleportation on the entire map.
+			WEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE...
 			'''
 	}
 }

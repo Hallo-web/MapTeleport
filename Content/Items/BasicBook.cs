@@ -12,25 +12,26 @@ namespace MapTeleport.Content.Items
 		// The Display Name and Tooltip of this item can be edited in the 'Localization/en-US_Mods.MapTeleport.hjson' file.
 		public override void SetDefaults()
 		{
-			Item.damage = 50;
-			Item.DamageType = DamageClass.Melee;
-			Item.width = 40;
-			Item.height = 40;
+			Item.reuseDelay = 20;
+			Item.width = 10;
+			Item.height = 10;
 			Item.useTime = 20;
 			Item.useAnimation = 20;
-			Item.useStyle = ItemUseStyleID.Swing;
-			Item.knockBack = 6;
-			Item.value = Item.buyPrice(silver: 1);
-			Item.rare = ItemRarityID.Blue;
-			Item.UseSound = SoundID.Item1;
-			Item.autoReuse = true;
+			Item.useStyle = ItemUseStyleID.RaiseLamp;
+			Item.rare = ItemRarityID.Purple;
+			Item.UseSound = SoundID.ScaryScream;
+			Item.autoReuse = false;
 		}
 
 		public override void AddRecipes()
 		{
 			Recipe recipe = CreateRecipe();
-			recipe.AddIngredient(ItemID.DirtBlock, 10);
-			recipe.AddTile(TileID.WorkBenches);
+			recipe.AddIngredient(ItemID.FragmentSolar, 5);
+			recipe.AddIngredient(ItemID.FragmentStardust, 5);
+			recipe.AddIngredient(ItemID.FragmentVortex, 5);
+			recipe.AddIngredient(ItemID.FragmentNebula, 5);
+			recipe.AddIngredient(ItemID.GoldWatch, 1);
+			recipe.AddTile(TileID.GrandfatherClocks);
 			recipe.Register();
 		}
 	}
