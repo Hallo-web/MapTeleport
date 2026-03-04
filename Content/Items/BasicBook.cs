@@ -34,5 +34,10 @@ namespace MapTeleport.Content.Items
 			recipe.AddTile(TileID.GrandfatherClocks);
 			recipe.Register();
 		}
+			public override bool? UseItem(Player player)
+		{
+			player.GetModPlayer<Content.Players.TeleportPlayer>().teleportMode = true;
+			return true;
+		}
 	}
 }

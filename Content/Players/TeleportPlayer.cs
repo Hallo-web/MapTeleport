@@ -31,9 +31,26 @@ namespace MapTeleport.Content.Players
             if (!Main.mapFullscreen)
                 return;
 
-            if (Main.mouseLeft && Main.mouseLeftRelease)
+            if (Main.mouseRight && Main.mouseRightRelease)
             {
-                Vector2 world = Main.MouseWorld;
+                Vector2 world;
+
+                if (Main.mapFullscreen)
+                {
+                    Vector2 mouse = Main.MouseScreen;
+
+                    float scale = Main.mapFullscreenScale;
+
+                    world = (mouse - new Vector2(Main.screenWidth, Main.screenHeight) / 2f) 
+                            / scale 
+                            + Main.mapFullscreenPos;
+
+                    world *= 16f; // convert tile → pixel
+                }
+                else
+                {
+                    world = Main.MouseWorld;
+                }
 
                 int tileX = (int)(world.X / 16f);
                 int tileY = (int)(world.Y / 16f);
@@ -80,9 +97,10 @@ namespace MapTeleport.Content.Players
 
         public void DoTeleport(int x, int y)
         {
-            Vector2 position = new Vector2(x * 16, (y - 2) * 16);
+            Vector2 position = new Vector2(x + 1, y - 1) * 16f;
 
-            Player.Teleport(position, TeleportationStyleID.RodOfDiscord);
+            Player.Teleport(position, 0); // maybe put back to "TeleportationStyleID.RodOfDiscord"
+            Player.velocity = Vector2.Zero;
             NetMessage.SendData(MessageID.TeleportEntity, -1, -1, null, Player.whoAmI, position.X, position.Y);
         }
     }
