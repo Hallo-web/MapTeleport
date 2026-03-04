@@ -19,7 +19,7 @@ namespace MapTeleport.Content.Items
 			Item.useAnimation = 20;
 			Item.useStyle = ItemUseStyleID.RaiseLamp;
 			Item.rare = ItemRarityID.Purple;
-			Item.UseSound = SoundID.ScaryScream;
+			Item.UseSound = SoundID.Item4;
 			Item.autoReuse = false;
 		}
 

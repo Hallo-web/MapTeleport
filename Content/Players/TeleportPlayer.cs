@@ -3,54 +3,38 @@ using Terraria;
 using Terraria.ID;
 using Terraria.ModLoader;
 using Terraria.GameInput;
+using Terraria.Audio;
+using System.IO;
 
 namespace MapTeleport.Content.Players
 {
     public class TeleportPlayer : ModPlayer
     {
-        public bool teleportMode;
+        public bool teleportMode; // true when holding the book
 
         public override void ProcessTriggers(TriggersSet triggersSet)
         {
-            // If holding your book, enable teleport mode
-            if (Player.HeldItem.ModItem is Items.BasicBook)
-            {
-                teleportMode = true;
-            }
-            else
-            {
-                teleportMode = false;
-            }
+            // Enable teleport mode if holding the book
+            teleportMode = Player.HeldItem.ModItem is Items.BasicBook;
         }
 
         public override void PostUpdate()
         {
-            if (!teleportMode)
+            if (!teleportMode || !Main.mapFullscreen)
                 return;
 
-            if (!Main.mapFullscreen)
-                return;
-
+            // Right-click map to teleport
             if (Main.mouseRight && Main.mouseRightRelease)
             {
-                Vector2 world;
+                Vector2 mouse = Main.MouseScreen;
+                float scale = Main.mapFullscreenScale;
 
-                if (Main.mapFullscreen)
-                {
-                    Vector2 mouse = Main.MouseScreen;
+                // Convert screen coords → world coords
+                Vector2 world = (mouse - new Vector2(Main.screenWidth, Main.screenHeight) / 2f) 
+                                / scale 
+                                + Main.mapFullscreenPos;
 
-                    float scale = Main.mapFullscreenScale;
-
-                    world = (mouse - new Vector2(Main.screenWidth, Main.screenHeight) / 2f) 
-                            / scale 
-                            + Main.mapFullscreenPos;
-
-                    world *= 16f; // convert tile → pixel
-                }
-                else
-                {
-                    world = Main.MouseWorld;
-                }
+                world *= 16f; // tile → pixel
 
                 int tileX = (int)(world.X / 16f);
                 int tileY = (int)(world.Y / 16f);
@@ -59,49 +43,50 @@ namespace MapTeleport.Content.Players
             }
         }
 
-                private bool HasRoom(int x, int y)
+        // Public so server packet handler can access it
+        public bool HasRoom(int x, int y)
         {
             for (int i = 0; i < 2; i++)
             {
                 for (int j = 0; j < 3; j++)
                 {
                     Tile tile = Framing.GetTileSafely(x + i, y - j);
-
                     if (tile.HasTile && Main.tileSolid[tile.TileType])
                         return false;
                 }
             }
-
             return true;
         }
 
-                private void TryTeleport(int x, int y)
+        private void TryTeleport(int x, int y)
         {
-            if (!HasRoom(x, y))
-                return;
+            if (!HasRoom(x, y)) return;
 
             if (Main.netMode == NetmodeID.SinglePlayer)
             {
                 DoTeleport(x, y);
             }
-            else
+            else if (Main.netMode == NetmodeID.MultiplayerClient)
             {
+                // Send teleport request to server
                 ModPacket packet = Mod.GetPacket();
-                packet.Write((byte)0); // packet ID
-                packet.Write(Player.whoAmI);
+                packet.Write((byte)0); // packet ID = teleport
                 packet.Write(x);
                 packet.Write(y);
                 packet.Send();
             }
         }
 
+        // Executed server-side (or singleplayer)
         public void DoTeleport(int x, int y)
         {
-            Vector2 position = new Vector2(x + 1, y - 1) * 16f;
+            Vector2 position = new Vector2(x * 16f, y * 16f - Player.height);
 
-            Player.Teleport(position, 0); // maybe put back to "TeleportationStyleID.RodOfDiscord"
+            Player.Teleport(position, 0); // server handles sync
             Player.velocity = Vector2.Zero;
-            NetMessage.SendData(MessageID.TeleportEntity, -1, -1, null, Player.whoAmI, position.X, position.Y);
+
+            // Optional teleport sound
+            SoundEngine.PlaySound(SoundID.Item6, Player.position);
         }
     }
 }

@@ -1,6 +1,6 @@
 using Terraria;
-using Terraria.ModLoader;
 using Terraria.ID;
+using Terraria.ModLoader;
 using System.IO;
 
 namespace MapTeleport
@@ -11,19 +11,21 @@ namespace MapTeleport
         {
             byte packetID = reader.ReadByte();
 
-            switch (packetID)
+            if (packetID == 0) // teleport request
             {
-                case 0:
-                    int playerID = reader.ReadInt32();
-                    int x = reader.ReadInt32();
-                    int y = reader.ReadInt32();
+                int x = reader.ReadInt32();
+                int y = reader.ReadInt32();
 
-                    if (Main.netMode == NetmodeID.Server)
+                if (Main.netMode == NetmodeID.Server)
+                {
+                    Player player = Main.player[whoAmI];
+                    var modPlayer = player.GetModPlayer<Content.Players.TeleportPlayer>();
+
+                    if (modPlayer != null && modPlayer.HasRoom(x, y))
                     {
-                        Player player = Main.player[playerID];
-                        player.GetModPlayer<Content.Players.TeleportPlayer>().DoTeleport(x, y);
+                        modPlayer.DoTeleport(x, y); // server executes teleport
                     }
-                    break;
+                }
             }
         }
     }
